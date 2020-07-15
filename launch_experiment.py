@@ -101,7 +101,9 @@ def experiment(variant):
     # create logging directory
     # TODO support Docker
     exp_id = 'debug' if DEBUG else None
-    experiment_log_dir = setup_logger(variant['env_name'], variant=variant, exp_id=exp_id, base_log_dir=variant['util_params']['base_log_dir'])
+    base_log_dir = variant['util_params']['base_log_dir']
+    experiment_log_dir = setup_logger(variant['env_name'], variant=variant, exp_id=exp_id, base_log_dir=base_log_dir)
+    print(f"Logging to {base_log_dir}")
 
     # optionally save eval trajectories as pkl files
     if variant['algo_params']['dump_eval_paths']:
