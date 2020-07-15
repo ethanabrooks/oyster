@@ -112,3 +112,5 @@ RUN echo "source activate pearl" >> /root/.bashrc \
     && echo "cd /root/code" >> /root/.bashrc
 ENV PATH /opt/conda/envs/pearl/bin:$PATH
 
+COPY . /root/code
+ENTRYPOINT ["/root/code/entrypoint.sh"]
