@@ -124,9 +124,8 @@ def deep_update_dict(fr, to):
 @click.command()
 @click.argument('config', default=None)
 @click.option('--gpu', default=0)
-@click.option('--docker', is_flag=True, default=False)
-@click.option('--debug', is_flag=True, default=False)
-def main(config, gpu, docker, debug):
+@click.option('--log-dir', default=None)
+def main(config, gpu, log_dir):
 
     variant = default_config
     if config:
@@ -134,6 +133,8 @@ def main(config, gpu, docker, debug):
             exp_params = json.load(f)
         variant = deep_update_dict(exp_params, variant)
     variant['util_params']['gpu_id'] = gpu
+    if log_dir is not None:
+        variant['util_params']['base_log_dir'] = log_dir
 
     experiment(variant)
 
