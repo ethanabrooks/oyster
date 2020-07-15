@@ -30,7 +30,8 @@ ENV PATH /opt/conda/bin:$PATH
 # install anaconda
 RUN apt-get update --fix-missing && apt-get install -y wget bzip2 ca-certificates \
     libglib2.0-0 libxext6 libsm6 libxrender1 \
-    git mercurial subversion
+    git mercurial subversion \
+    python3.8
 
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && \
     /bin/bash /tmp/miniconda.sh -b -p /opt/conda && \
@@ -113,4 +114,4 @@ RUN echo "source activate pearl" >> /root/.bashrc \
 ENV PATH /opt/conda/envs/pearl/bin:$PATH
 
 COPY . /root/code
-ENTRYPOINT ["/root/code/entrypoint.sh"]
+#ENTRYPOINT ["/root/code/entrypoint.sh"]

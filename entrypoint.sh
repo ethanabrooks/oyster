@@ -1,3 +1,2 @@
 #! /usr/bin/env bash
-python launch_experiment.py ./configs/point-robot.json
-
+python3.8 launch_experiment.py ./configs/point-robot.json --log-dir=/log-dir $@
