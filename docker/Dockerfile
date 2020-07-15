@@ -5,11 +5,12 @@
 
 # Base container that includes all dependencies but not the actual repo
 
-ARG UBUNTU_VERSION=16.04
+ARG UBUNTU_VERSION=18.04
 ARG ARCH=
-ARG CUDA=10.0
+ARG CUDA=10.1
 
-FROM nvidia/cudagl${ARCH:+-$ARCH}:${CUDA}-base-ubuntu${UBUNTU_VERSION} as base
+#FROM nvidia/cudagl${ARCH:+-$ARCH}:${CUDA}-base-ubuntu${UBUNTU_VERSION} as base
+FROM nvidia/cudagl:10.1-base-ubuntu18.04
 # ARCH and CUDA are specified again because the FROM directive resets ARGs
 # (but their default value is retained if set previously)
 
@@ -47,39 +48,6 @@ RUN apt-get install -y curl grep sed dpkg && \
 
 RUN conda update -y --name base conda \
     && conda clean --all -y
-
-# NOTE: we don't use TF so might not need some of these
-# ========== Tensorflow dependencies ==========
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
-        cuda-command-line-tools-${CUDA/./-} \
-        cuda-cublas-${CUDA/./-} \
-        cuda-cufft-${CUDA/./-} \
-        cuda-curand-${CUDA/./-} \
-        cuda-cusolver-${CUDA/./-} \
-        cuda-cusparse-${CUDA/./-} \
-        curl \
-        libcudnn7=${CUDNN}+cuda${CUDA} \
-        libfreetype6-dev \
-        libhdf5-serial-dev \
-        libzmq3-dev \
-        pkg-config \
-        software-properties-common \
-        zip \
-        unzip \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN [ ${ARCH} = ppc64le ] || (apt-get update && \
-        apt-get install nvinfer-runtime-trt-repo-ubuntu${UBUNTU_VERSION/./}-5.0.2-ga-cuda${CUDA} \
-        && apt-get update \
-        && apt-get install -y --no-install-recommends libnvinfer5=5.0.2-1+cuda${CUDA} \
-        && apt-get clean \
-        && rm -rf /var/lib/apt/lists/*)
-
-# For CUDA profiling, TensorFlow requires CUPTI.
-ENV LD_LIBRARY_PATH /usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH
 
 # ========== Repo dependencies ==========
 RUN apt-get update -y \
@@ -124,22 +92,6 @@ RUN apt-get update -y \
     && rm -rf /var/lib/apt/lists/*
 
 
-# ========= MuJoCo ===============
-COPY ./install_mujoco.py /tmp/
-
-RUN /tmp/install_mujoco.py --mujoco-path=/root/.mujoco --versions 1.31 1.50 2.00 \
-    && ln -s /root/.mujoco/mujoco200_linux /root/.mujoco/mujoco200 \
-    && rm /tmp/install_mujoco.py
-
-ENV LD_LIBRARY_PATH /root/.mujoco/mjpro150/bin:${LD_LIBRARY_PATH}
-ENV LD_LIBRARY_PATH /root/.mujoco/mujoco200/bin:${LD_LIBRARY_PATH}
-ENV LD_LIBRARY_PATH /root/.mujoco/mujoco200_linux/bin:${LD_LIBRARY_PATH}
-
-# This is a hack required to make mujocopy to compile in gpu mode
-RUN mkdir -p /usr/lib/nvidia-000
-ENV LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/lib/nvidia-000
-
-
 # ========== Conda Environment ==========
 COPY ./environment.yml /tmp/environment.yml
 
@@ -148,7 +100,6 @@ COPY ./environment.yml /tmp/environment.yml
 # To the container. We need the key in order to compile mujoco_py.
 # TODO this is not good but it can't find the key otherwise
 #RUN echo "${MJKEY}" > ./mjkey.txt 
-COPY ./mjkey.txt /root/.mujoco/
 RUN conda env update -f /tmp/environment.yml \
     && conda clean --all -y 
 
