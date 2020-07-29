@@ -10,6 +10,7 @@ class L2bEnv(gym.Env, Trainer):
         super().__init__(**kwargs, use_tune=False)
         self.iterator = None
         self.t = None
+        self.i = 0
         self.observation_space = self.env.observation_space
         self.action_space = self.env.action_space
 
@@ -23,13 +24,14 @@ class L2bEnv(gym.Env, Trainer):
     def reset(self):
         self.iterator = self.generator()
         self.t = 0
+        self.i += 1
         return next(self.iterator)
 
     def reset_task(self, idx):
         raise NotImplementedError
 
     def get_all_task_idx(self):
-        raise NotImplementedError
+        return list(range(self.i))
 
     def render(self, mode="human"):
         pass
