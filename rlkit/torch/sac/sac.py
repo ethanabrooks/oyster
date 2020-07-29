@@ -14,8 +14,6 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
     def __init__(
         self,
         env,
-        train_tasks,
-        eval_tasks,
         latent_dim,
         nets,
         policy_lr=1e-3,
@@ -39,8 +37,6 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         super().__init__(
             env=env,
             agent=nets[0],
-            train_tasks=train_tasks,
-            eval_tasks=eval_tasks,
             **kwargs
         )
 

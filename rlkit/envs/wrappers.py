@@ -48,8 +48,16 @@ class NormalizedBoxEnv(ProxyEnv, Serializable):
     """
 
     def __init__(
-        self, env, reward_scale=1.0, obs_mean=None, obs_std=None,
+        self,
+        env,
+        num_train_tasks,
+        num_eval_tasks,
+        reward_scale=1.0,
+        obs_mean=None,
+        obs_std=None,
     ):
+        self.num_train_tasks = num_eval_tasks
+        self.num_eval_tasks = num_eval_tasks
         # self._wrapped_env needs to be called first because
         # Serializable.quick_init calls getattr, on this class. And the
         # implementation of getattr (see below) calls self._wrapped_env.
@@ -126,6 +134,14 @@ class NormalizedBoxEnv(ProxyEnv, Serializable):
 
     def __getattr__(self, attrname):
         return getattr(self._wrapped_env, attrname)
+
+    def train_tasks(self):
+        tasks = self._wrapped_env.get_all_task_idx()
+        return list(tasks[: self.num_train_tasks])
+
+    def eval_tasks(self):
+        tasks = self._wrapped_env.get_all_task_idx()
+        return list(tasks[: self.num_eval_tasks])
 
 
 class CameraWrapper(object):

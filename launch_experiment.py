@@ -24,8 +24,11 @@ from configs.l2b import l2b_config
 def experiment(variant):
 
     # create multi-task environment and sample tasks
-    env = NormalizedBoxEnv(ENVS[variant["env_name"]](**variant["env_params"]))
-    tasks = env.get_all_task_idx()
+    env = NormalizedBoxEnv(
+        ENVS[variant["env_name"]](**variant["env_params"]),
+        num_train_tasks=variant["n_train_tasks"],
+        num_eval_tasks=variant["n_eval_tasks"],
+    )
     obs_dim = int(np.prod(env.observation_space.shape))
     action_dim = int(np.prod(env.action_space.shape))
     reward_dim = 1
@@ -75,8 +78,6 @@ def experiment(variant):
     agent = PEARLAgent(latent_dim, context_encoder, policy, **variant["algo_params"])
     algorithm = PEARLSoftActorCritic(
         env=env,
-        train_tasks=lambda: list(tasks[: variant["n_train_tasks"]]),
-        eval_tasks=lambda: list(tasks[-variant["n_eval_tasks"] :]),
         nets=[agent, qf1, qf2, vf],
         latent_dim=latent_dim,
         **variant["algo_params"],
