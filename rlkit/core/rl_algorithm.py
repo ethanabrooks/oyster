@@ -98,11 +98,15 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         # - training RL update
         # - training encoder update
         self.replay_buffer = MultiTaskReplayBuffer(
-            self.replay_buffer_size, env, self.train_tasks,
-        )
+                self.replay_buffer_size,
+                env,
+                self.train_tasks(),
+            )
 
         self.enc_replay_buffer = MultiTaskReplayBuffer(
-            self.replay_buffer_size, env, self.train_tasks,
+                self.replay_buffer_size,
+                env,
+                self.train_tasks(),
         )
 
         self._n_env_steps_total = 0
@@ -126,9 +130,9 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         sample task randomly
         """
         if is_eval:
-            idx = np.random.randint(len(self.eval_tasks))
+            idx = np.random.randint(len(self.eval_tasks()))
         else:
-            idx = np.random.randint(len(self.train_tasks))
+            idx = np.random.randint(len(self.train_tasks()))
         return idx
 
     def train(self):
@@ -149,13 +153,13 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
             if it_ == 0:
                 print("collecting initial pool of data for train and eval")
                 # temp for evaluating
-                for idx in self.train_tasks:
+                for idx in self.train_tasks():
                     self.task_idx = idx
                     self.env.reset_task(idx)
                     self.collect_data(self.num_initial_steps, 1, np.inf)
             # Sample data from train tasks.
             for i in range(self.num_tasks_sample):
-                idx = np.random.randint(len(self.train_tasks))
+                idx = np.random.randint(len(self.train_tasks()))
                 self.task_idx = idx
                 self.env.reset_task(idx)
                 self.enc_replay_buffer.task_buffers[idx].clear()
@@ -179,7 +183,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
 
             # Sample train tasks and compute gradient updates on parameters.
             for train_step in range(self.num_train_steps_per_itr):
-                indices = np.random.choice(self.train_tasks, self.meta_batch)
+                indices = np.random.choice(self.train_tasks(), self.meta_batch)
                 self._do_training(indices)
                 self._n_train_steps_total += 1
             gt.stamp("train")
@@ -294,12 +298,7 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         return True
 
     def _can_train(self):
-        return all(
-            [
-                self.replay_buffer.num_steps_can_sample(idx) >= self.batch_size
-                for idx in self.train_tasks
-            ]
-        )
+        return all([self.replay_buffer.num_steps_can_sample(idx) >= self.batch_size for idx in self.train_tasks()])
 
     def _get_action_and_info(self, agent, observation):
         """
@@ -426,8 +425,8 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
 
         ### train tasks
         # eval on a subset of train tasks for speed
-        indices = np.random.choice(self.train_tasks, len(self.eval_tasks))
-        eval_util.dprint("evaluating on {} train tasks".format(len(indices)))
+        indices = np.random.choice(self.train_tasks(), len(self.eval_tasks()))
+        eval_util.dprint('evaluating on {} train tasks'.format(len(indices)))
         ### eval train tasks with posterior sampled from the training replay buffer
         train_returns = []
         for idx in indices:
@@ -461,9 +460,9 @@ class MetaRLAlgorithm(metaclass=abc.ABCMeta):
         eval_util.dprint(train_online_returns)
 
         ### test tasks
-        eval_util.dprint("evaluating on {} test tasks".format(len(self.eval_tasks)))
-        test_final_returns, test_online_returns = self._do_eval(self.eval_tasks, epoch)
-        eval_util.dprint("test online returns")
+        eval_util.dprint('evaluating on {} test tasks'.format(len(self.eval_tasks())))
+        test_final_returns, test_online_returns = self._do_eval(self.eval_tasks(), epoch)
+        eval_util.dprint('test online returns')
         eval_util.dprint(test_online_returns)
 
         # save the final posterior

@@ -19,7 +19,8 @@ def register_env(name):
     return register_env_fn
 
 
-importlib.import_module("rlkit.envs.point_robot")
+importlib.import_module('rlkit.envs.point_robot')
+importlib.import_module('rlkit.envs.l2b')
 # automatically import any envs in the envs/ directory
 # for file in os.listdir(os.path.dirname(__file__)):
 # if file.endswith('.py') and not file.startswith('_'):

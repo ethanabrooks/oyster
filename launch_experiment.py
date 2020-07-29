@@ -75,8 +75,8 @@ def experiment(variant):
     agent = PEARLAgent(latent_dim, context_encoder, policy, **variant["algo_params"])
     algorithm = PEARLSoftActorCritic(
         env=env,
-        train_tasks=list(tasks[: variant["n_train_tasks"]]),
-        eval_tasks=list(tasks[-variant["n_eval_tasks"] :]),
+        train_tasks=lambda: list(tasks[: variant["n_train_tasks"]]),
+        eval_tasks=lambda: list(tasks[-variant["n_eval_tasks"] :]),
         nets=[agent, qf1, qf2, vf],
         latent_dim=latent_dim,
         **variant["algo_params"],
@@ -140,9 +140,9 @@ def deep_update_dict(fr, to):
 
 
 @click.command()
-@click.argument("config", default=None)
-@click.option("--gpu", default=0)
-@click.option("--l2b", default=0)
+@click.option("--config", default=None)
+@click.option("--gpu", is_flag=True)
+@click.option("--l2b", is_flag=True)
 @click.option("--log-dir", default=None)
 def main(config, gpu, l2b, log_dir):
 
@@ -151,7 +151,7 @@ def main(config, gpu, l2b, log_dir):
         with open(os.path.join(config)) as f:
             exp_params = json.load(f)
         variant = deep_update_dict(exp_params, variant)
-    variant["util_params"]["gpu_id"] = gpu
+    variant["util_params"]["use_gpu"] = gpu
     if log_dir is not None:
         variant["util_params"]["base_log_dir"] = log_dir
 
