@@ -1,0 +1,5 @@
+models/
+results/
+.idea/
+__pycache__
+config_script.py
