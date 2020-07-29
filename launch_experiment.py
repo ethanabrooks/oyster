@@ -18,6 +18,7 @@ from rlkit.torch.sac.agent import PEARLAgent
 from rlkit.launchers.launcher_util import setup_logger
 import rlkit.torch.pytorch_util as ptu
 from configs.default import default_config
+from configs.l2b import l2b_config
 
 
 def experiment(variant):
@@ -129,10 +130,11 @@ def deep_update_dict(fr, to):
 @click.command()
 @click.argument('config', default=None)
 @click.option('--gpu', default=0)
+@click.option('--l2b', default=0)
 @click.option('--log-dir', default=None)
-def main(config, gpu, log_dir):
+def main(config, gpu, l2b, log_dir):
 
-    variant = default_config
+    variant = l2b_config if l2b else default_config
     if config:
         with open(os.path.join(config)) as f:
             exp_params = json.load(f)

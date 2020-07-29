@@ -1,9 +1,11 @@
 import gym
 
+from rlkit.envs import register_env
 from trainer_env.main import Trainer
 
 
-class TrainerEnv(gym.Env, Trainer):
+@register_env('l2b')
+class L2bEnv(gym.Env, Trainer):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.iterator = None
