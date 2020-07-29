@@ -2,6 +2,7 @@ import torch
 from torch.autograd import Variable
 
 import rlkit.torch.pytorch_util as ptu
+
 try:
     from torch.distributions import Distribution, Normal
 except ImportError:
@@ -9,6 +10,7 @@ except ImportError:
     print("See docker/rlkit/rlkit-env.yml")
     import math
     from numbers import Number
+
     class Distribution(object):
         r"""
         Distribution is the abstract base class for probability distributions.
@@ -69,13 +71,20 @@ except ImportError:
                     return torch.Tensor([v]).expand(n, 1)
                 else:
                     return v.expand(n, *v.size())
+
             return torch.normal(expand(self.mean), expand(self.std))
 
         def log_prob(self, value):
             # compute the variance
-            var = (self.std ** 2)
-            log_std = math.log(self.std) if isinstance(self.std, Number) else self.std.log()
-            return -((value - self.mean) ** 2) / (2 * var) - log_std - math.log(math.sqrt(2 * math.pi))
+            var = self.std ** 2
+            log_std = (
+                math.log(self.std) if isinstance(self.std, Number) else self.std.log()
+            )
+            return (
+                -((value - self.mean) ** 2) / (2 * var)
+                - log_std
+                - math.log(math.sqrt(2 * math.pi))
+            )
 
 
 class TanhNormal(Distribution):
@@ -86,6 +95,7 @@ class TanhNormal(Distribution):
 
     Note: this is not very numerically stable.
     """
+
     def __init__(self, normal_mean, normal_std, epsilon=1e-6):
         """
         :param normal_mean: Mean of the normal distribution
@@ -111,9 +121,7 @@ class TanhNormal(Distribution):
         :return:
         """
         if pre_tanh_value is None:
-            pre_tanh_value = torch.log(
-                (1+value) / (1-value)
-            ) / 2
+            pre_tanh_value = torch.log((1 + value) / (1 - value)) / 2
         return self.normal.log_prob(pre_tanh_value) - torch.log(
             1 - value * value + self.epsilon
         )
@@ -126,13 +134,10 @@ class TanhNormal(Distribution):
             return torch.tanh(z)
 
     def rsample(self, return_pretanh_value=False):
-        z = (
-            self.normal_mean +
-            self.normal_std *
-            Variable(Normal(
-                ptu.zeros(self.normal_mean.size()),
-                ptu.ones(self.normal_std.size())
-            ).sample())
+        z = self.normal_mean + self.normal_std * Variable(
+            Normal(
+                ptu.zeros(self.normal_mean.size()), ptu.ones(self.normal_std.size())
+            ).sample()
         )
         # z.requires_grad_()
         if return_pretanh_value:

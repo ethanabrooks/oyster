@@ -20,17 +20,17 @@ def identity(x):
 
 class Mlp(PyTorchModule):
     def __init__(
-            self,
-            hidden_sizes,
-            output_size,
-            input_size,
-            init_w=3e-3,
-            hidden_activation=F.relu,
-            output_activation=identity,
-            hidden_init=ptu.fanin_init,
-            b_init_value=0.1,
-            layer_norm=False,
-            layer_norm_kwargs=None,
+        self,
+        hidden_sizes,
+        output_size,
+        input_size,
+        init_w=3e-3,
+        hidden_activation=F.relu,
+        output_activation=identity,
+        hidden_init=ptu.fanin_init,
+        b_init_value=0.1,
+        layer_norm=False,
+        layer_norm_kwargs=None,
     ):
         self.save_init_params(locals())
         super().__init__()
@@ -95,12 +95,7 @@ class MlpPolicy(Mlp, Policy):
     A simpler interface for creating policies.
     """
 
-    def __init__(
-            self,
-            *args,
-            obs_normalizer: TorchFixedNormalizer = None,
-            **kwargs
-    ):
+    def __init__(self, *args, obs_normalizer: TorchFixedNormalizer = None, **kwargs):
         self.save_init_params(locals())
         super().__init__(*args, **kwargs)
         self.obs_normalizer = obs_normalizer
@@ -122,37 +117,37 @@ class TanhMlpPolicy(MlpPolicy):
     """
     A helper class since most policies have a tanh output activation.
     """
+
     def __init__(self, *args, **kwargs):
         self.save_init_params(locals())
         super().__init__(*args, output_activation=torch.tanh, **kwargs)
 
 
 class MlpEncoder(FlattenMlp):
-    '''
+    """
     encode context via MLP
-    '''
+    """
 
     def reset(self, num_tasks=1):
         pass
 
 
 class RecurrentEncoder(FlattenMlp):
-    '''
+    """
     encode context via recurrent network
-    '''
+    """
 
-    def __init__(self,
-                 *args,
-                 **kwargs
-    ):
+    def __init__(self, *args, **kwargs):
         self.save_init_params(locals())
         super().__init__(*args, **kwargs)
         self.hidden_dim = self.hidden_sizes[-1]
-        self.register_buffer('hidden', torch.zeros(1, 1, self.hidden_dim))
+        self.register_buffer("hidden", torch.zeros(1, 1, self.hidden_dim))
 
         # input should be (task, seq, feat) and hidden should be (task, 1, feat)
 
-        self.lstm = nn.LSTM(self.hidden_dim, self.hidden_dim, num_layers=1, batch_first=True)
+        self.lstm = nn.LSTM(
+            self.hidden_dim, self.hidden_dim, num_layers=1, batch_first=True
+        )
 
     def forward(self, in_, return_preactivations=False):
         # expects inputs of dimension (task, seq, feat)
@@ -165,7 +160,9 @@ class RecurrentEncoder(FlattenMlp):
             out = self.hidden_activation(out)
 
         out = out.view(task, seq, -1)
-        out, (hn, cn) = self.lstm(out, (self.hidden, torch.zeros(self.hidden.size()).to(ptu.device)))
+        out, (hn, cn) = self.lstm(
+            out, (self.hidden, torch.zeros(self.hidden.size()).to(ptu.device))
+        )
         self.hidden = hn
         # take the last hidden state to predict z
         out = out[:, -1, :]
@@ -180,7 +177,3 @@ class RecurrentEncoder(FlattenMlp):
 
     def reset(self, num_tasks=1):
         self.hidden = self.hidden.new_full((1, num_tasks, self.hidden_dim), 0)
-
-
-
-

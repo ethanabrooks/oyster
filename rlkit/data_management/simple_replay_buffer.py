@@ -5,7 +5,7 @@ from rlkit.data_management.replay_buffer import ReplayBuffer
 
 class SimpleReplayBuffer(ReplayBuffer):
     def __init__(
-            self, max_replay_buffer_size, observation_dim, action_dim,
+        self, max_replay_buffer_size, observation_dim, action_dim,
     ):
         self._observation_dim = observation_dim
         self._action_dim = action_dim
@@ -21,17 +21,18 @@ class SimpleReplayBuffer(ReplayBuffer):
         self._rewards = np.zeros((max_replay_buffer_size, 1))
         self._sparse_rewards = np.zeros((max_replay_buffer_size, 1))
         # self._terminals[i] = a terminal was received at time i
-        self._terminals = np.zeros((max_replay_buffer_size, 1), dtype='uint8')
+        self._terminals = np.zeros((max_replay_buffer_size, 1), dtype="uint8")
         self.clear()
 
-    def add_sample(self, observation, action, reward, terminal,
-                   next_observation, **kwargs):
+    def add_sample(
+        self, observation, action, reward, terminal, next_observation, **kwargs
+    ):
         self._observations[self._top] = observation
         self._actions[self._top] = action
         self._rewards[self._top] = reward
         self._terminals[self._top] = terminal
         self._next_obs[self._top] = next_observation
-        self._sparse_rewards[self._top] = kwargs['env_info'].get('sparse_reward', 0)
+        self._sparse_rewards[self._top] = kwargs["env_info"].get("sparse_reward", 0)
         self._advance()
 
     def terminate_episode(self):
@@ -65,12 +66,12 @@ class SimpleReplayBuffer(ReplayBuffer):
         )
 
     def random_batch(self, batch_size):
-        ''' batch of unordered transitions '''
+        """ batch of unordered transitions """
         indices = np.random.randint(0, self._size, batch_size)
         return self.sample_data(indices)
 
     def random_sequence(self, batch_size):
-        ''' batch of trajectories '''
+        """ batch of trajectories """
         # take random trajectories until we have enough
         i = 0
         indices = []

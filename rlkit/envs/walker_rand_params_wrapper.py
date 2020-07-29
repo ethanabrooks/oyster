@@ -4,7 +4,7 @@ from rand_param_envs.walker2d_rand_params import Walker2DRandParamsEnv
 from . import register_env
 
 
-@register_env('walker-rand-params')
+@register_env("walker-rand-params")
 class WalkerRandParamsWrappedEnv(Walker2DRandParamsEnv):
     def __init__(self, n_tasks=2, randomize_tasks=True):
         super(WalkerRandParamsWrappedEnv, self).__init__()

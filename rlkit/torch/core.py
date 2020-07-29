@@ -10,7 +10,6 @@ from rlkit.core.serializable import Serializable
 
 
 class PyTorchModule(nn.Module, Serializable, metaclass=abc.ABCMeta):
-
     def get_param_values(self):
         return self.state_dict()
 

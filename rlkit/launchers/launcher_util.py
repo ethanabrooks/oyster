@@ -19,7 +19,7 @@ from rlkit.core import logger
 from rlkit.launchers import config
 from rlkit.torch.pytorch_util import set_gpu_mode
 
-GitInfo = namedtuple('GitInfo', ['code_diff', 'commit_hash', 'branch_name'])
+GitInfo = namedtuple("GitInfo", ["code_diff", "commit_hash", "branch_name"])
 
 
 def recursive_items(dictionary):
@@ -48,10 +48,7 @@ def recursive_items(dictionary):
 
 
 def create_mounts(
-        mode,
-        base_log_dir,
-        sync_interval=180,
-        local_input_dir_to_mount_point_dict=None,
+    mode, base_log_dir, sync_interval=180, local_input_dir_to_mount_point_dict=None,
 ):
     if local_input_dir_to_mount_point_dict is None:
         local_input_dir_to_mount_point_dict = {}
@@ -60,30 +57,28 @@ def create_mounts(
 
     mounts = [m for m in CODE_MOUNTS]
     for dir, mount_point in local_input_dir_to_mount_point_dict.items():
-        mounts.append(mount.MountLocal(
-            local_dir=dir,
-            mount_point=mount_point,
-            pythonpath=False,
-        ))
+        mounts.append(
+            mount.MountLocal(local_dir=dir, mount_point=mount_point, pythonpath=False,)
+        )
 
-    if mode != 'local':
+    if mode != "local":
         for m in NON_CODE_MOUNTS:
             mounts.append(m)
 
-    if mode == 'ec2':
+    if mode == "ec2":
         output_mount = mount.MountS3(
-            s3_path='',
+            s3_path="",
             mount_point=config.OUTPUT_DIR_FOR_DOODAD_TARGET,
             output=True,
             sync_interval=sync_interval,
         )
-    elif mode == 'local':
+    elif mode == "local":
         output_mount = mount.MountLocal(
             local_dir=base_log_dir,
             mount_point=None,  # For purely local mode, skip mounting.
             output=True,
         )
-    elif mode == 'local_docker':
+    elif mode == "local_docker":
         output_mount = mount.MountLocal(
             local_dir=base_log_dir,
             mount_point=config.OUTPUT_DIR_FOR_DOODAD_TARGET,
@@ -96,24 +91,24 @@ def create_mounts(
 
 
 def save_experiment_data(dictionary, log_dir):
-    with open(log_dir + '/experiment.pkl', 'wb') as handle:
+    with open(log_dir + "/experiment.pkl", "wb") as handle:
         pickle.dump(dictionary, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def run_experiment_here(
-        experiment_function,
-        variant=None,
-        exp_id=0,
-        seed=0,
-        use_gpu=True,
-        # Logger params:
-        exp_prefix="default",
-        snapshot_mode='last',
-        snapshot_gap=1,
-        git_info=None,
-        script_name=None,
-        base_log_dir=None,
-        log_dir=None,
+    experiment_function,
+    variant=None,
+    exp_id=0,
+    seed=0,
+    use_gpu=True,
+    # Logger params:
+    exp_prefix="default",
+    snapshot_mode="last",
+    snapshot_gap=1,
+    git_info=None,
+    script_name=None,
+    base_log_dir=None,
+    log_dir=None,
 ):
     """
     Run an experiment locally without any serialization.
@@ -133,11 +128,11 @@ def run_experiment_here(
     """
     if variant is None:
         variant = {}
-    variant['exp_id'] = str(exp_id)
+    variant["exp_id"] = str(exp_id)
 
-    if seed is None and 'seed' not in variant:
+    if seed is None and "seed" not in variant:
         seed = random.randint(0, 100000)
-        variant['seed'] = str(seed)
+        variant["seed"] = str(seed)
     reset_execution_environment()
 
     actual_log_dir = setup_logger(
@@ -169,10 +164,7 @@ def run_experiment_here(
         base_log_dir=base_log_dir,
     )
     save_experiment_data(
-        dict(
-            run_experiment_here_kwargs=run_experiment_here_kwargs
-        ),
-        actual_log_dir
+        dict(run_experiment_here_kwargs=run_experiment_here_kwargs), actual_log_dir
     )
     return experiment_function(variant)
 
@@ -185,7 +177,7 @@ def create_exp_name(exp_prefix, exp_id=0, seed=0):
     :return:
     """
     now = datetime.datetime.now(dateutil.tz.tzlocal())
-    timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
+    timestamp = now.strftime("%Y_%m_%d_%H_%M_%S")
     return "%s_%s_%04d--s-%d" % (exp_prefix, timestamp, exp_id, seed)
 
 
@@ -194,7 +186,7 @@ def create_simple_exp_name():
     Create a unique experiment name with a timestamp
     """
     now = datetime.datetime.now(dateutil.tz.tzlocal())
-    timestamp = now.strftime('%Y_%m_%d_%H_%M_%S')
+    timestamp = now.strftime("%Y_%m_%d_%H_%M_%S")
     return timestamp
 
 
@@ -217,20 +209,20 @@ def create_log_dir(exp_prefix, exp_id=None, seed=0, base_log_dir=None):
 
 
 def setup_logger(
-        exp_prefix="default",
-        exp_id=0,
-        seed=0,
-        variant=None,
-        base_log_dir=None,
-        text_log_file="debug.log",
-        variant_log_file="variant.json",
-        tabular_log_file="progress.csv",
-        snapshot_mode="last",
-        snapshot_gap=1,
-        log_tabular_only=False,
-        log_dir=None,
-        git_info=None,
-        script_name=None,
+    exp_prefix="default",
+    exp_id=0,
+    seed=0,
+    variant=None,
+    base_log_dir=None,
+    text_log_file="debug.log",
+    variant_log_file="variant.json",
+    tabular_log_file="progress.csv",
+    snapshot_mode="last",
+    snapshot_gap=1,
+    log_tabular_only=False,
+    log_dir=None,
+    git_info=None,
+    script_name=None,
 ):
     """
     Set up logger to have some reasonable default settings.
@@ -261,8 +253,9 @@ def setup_logger(
     """
     first_time = log_dir is None
     if first_time:
-        log_dir = create_log_dir(exp_prefix, exp_id=exp_id, seed=seed,
-                                 base_log_dir=base_log_dir)
+        log_dir = create_log_dir(
+            exp_prefix, exp_id=exp_id, seed=seed, base_log_dir=base_log_dir
+        )
 
     if variant is not None:
         logger.log("Variant:")
@@ -277,8 +270,9 @@ def setup_logger(
     if first_time:
         logger.add_tabular_output(tabular_log_path)
     else:
-        logger._add_output(tabular_log_path, logger._tabular_outputs,
-                           logger._tabular_fds, mode='a')
+        logger._add_output(
+            tabular_log_path, logger._tabular_outputs, logger._tabular_fds, mode="a"
+        )
         for tabular_fd in logger._tabular_fds:
             logger._tabular_header_written.add(tabular_fd)
     logger.set_snapshot_dir(log_dir)
@@ -295,7 +289,7 @@ def setup_logger(
                 f.write(code_diff)
         with open(osp.join(log_dir, "git_info.txt"), "w") as f:
             f.write("git hash: {}".format(commit_hash))
-            f.write('\n')
+            f.write("\n")
             f.write("git branch name: {}".format(branch_name))
     if script_name is not None:
         with open(osp.join(log_dir, "script_name.txt"), "w") as f:
@@ -351,6 +345,7 @@ def reset_execution_environment():
     :return:
     """
     import importlib
+
     importlib.reload(logger)
 
 
@@ -364,8 +359,7 @@ def query_yes_no(question, default="yes"):
 
     The "answer" return value is True for "yes" or False for "no".
     """
-    valid = {"yes": True, "y": True, "ye": True,
-             "no": False, "n": False}
+    valid = {"yes": True, "y": True, "ye": True, "no": False, "n": False}
     if default is None:
         prompt = " [y/n] "
     elif default == "yes":
@@ -378,10 +372,9 @@ def query_yes_no(question, default="yes"):
     while True:
         sys.stdout.write(question + prompt)
         choice = input().lower()
-        if default is not None and choice == '':
+        if default is not None and choice == "":
             return valid[default]
         elif choice in valid:
             return valid[choice]
         else:
-            sys.stdout.write("Please respond with 'yes' or 'no' "
-                             "(or 'y' or 'n').\n")
+            sys.stdout.write("Please respond with 'yes' or 'no' " "(or 'y' or 'n').\n")

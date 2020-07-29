@@ -24,18 +24,26 @@ from configs.l2b import l2b_config
 def experiment(variant):
 
     # create multi-task environment and sample tasks
-    env = NormalizedBoxEnv(ENVS[variant['env_name']](**variant['env_params']))
+    env = NormalizedBoxEnv(ENVS[variant["env_name"]](**variant["env_params"]))
     tasks = env.get_all_task_idx()
     obs_dim = int(np.prod(env.observation_space.shape))
     action_dim = int(np.prod(env.action_space.shape))
     reward_dim = 1
 
     # instantiate networks
-    latent_dim = variant['latent_size']
-    context_encoder_input_dim = 2 * obs_dim + action_dim + reward_dim if variant['algo_params']['use_next_obs_in_context'] else obs_dim + action_dim + reward_dim
-    context_encoder_output_dim = latent_dim * 2 if variant['algo_params']['use_information_bottleneck'] else latent_dim
-    net_size = variant['net_size']
-    recurrent = variant['algo_params']['recurrent']
+    latent_dim = variant["latent_size"]
+    context_encoder_input_dim = (
+        2 * obs_dim + action_dim + reward_dim
+        if variant["algo_params"]["use_next_obs_in_context"]
+        else obs_dim + action_dim + reward_dim
+    )
+    context_encoder_output_dim = (
+        latent_dim * 2
+        if variant["algo_params"]["use_information_bottleneck"]
+        else latent_dim
+    )
+    net_size = variant["net_size"]
+    recurrent = variant["algo_params"]["recurrent"]
     encoder_model = RecurrentEncoder if recurrent else MlpEncoder
 
     context_encoder = encoder_model(
@@ -64,61 +72,64 @@ def experiment(variant):
         latent_dim=latent_dim,
         action_dim=action_dim,
     )
-    agent = PEARLAgent(
-        latent_dim,
-        context_encoder,
-        policy,
-        **variant['algo_params']
-    )
+    agent = PEARLAgent(latent_dim, context_encoder, policy, **variant["algo_params"])
     algorithm = PEARLSoftActorCritic(
         env=env,
-        train_tasks=list(tasks[:variant['n_train_tasks']]),
-        eval_tasks=list(tasks[-variant['n_eval_tasks']:]),
+        train_tasks=list(tasks[: variant["n_train_tasks"]]),
+        eval_tasks=list(tasks[-variant["n_eval_tasks"] :]),
         nets=[agent, qf1, qf2, vf],
         latent_dim=latent_dim,
-        **variant['algo_params']
+        **variant["algo_params"],
     )
 
     # optionally load pre-trained weights
-    if variant['path_to_weights'] is not None:
-        path = variant['path_to_weights']
-        context_encoder.load_state_dict(torch.load(os.path.join(path, 'context_encoder.pth')))
-        qf1.load_state_dict(torch.load(os.path.join(path, 'qf1.pth')))
-        qf2.load_state_dict(torch.load(os.path.join(path, 'qf2.pth')))
-        vf.load_state_dict(torch.load(os.path.join(path, 'vf.pth')))
+    if variant["path_to_weights"] is not None:
+        path = variant["path_to_weights"]
+        context_encoder.load_state_dict(
+            torch.load(os.path.join(path, "context_encoder.pth"))
+        )
+        qf1.load_state_dict(torch.load(os.path.join(path, "qf1.pth")))
+        qf2.load_state_dict(torch.load(os.path.join(path, "qf2.pth")))
+        vf.load_state_dict(torch.load(os.path.join(path, "vf.pth")))
         # TODO hacky, revisit after model refactor
-        algorithm.networks[-2].load_state_dict(torch.load(os.path.join(path, 'target_vf.pth')))
-        policy.load_state_dict(torch.load(os.path.join(path, 'policy.pth')))
+        algorithm.networks[-2].load_state_dict(
+            torch.load(os.path.join(path, "target_vf.pth"))
+        )
+        policy.load_state_dict(torch.load(os.path.join(path, "policy.pth")))
 
     # optional GPU mode
-    ptu.set_gpu_mode(variant['util_params']['use_gpu'], variant['util_params']['gpu_id'])
+    ptu.set_gpu_mode(
+        variant["util_params"]["use_gpu"], variant["util_params"]["gpu_id"]
+    )
     if ptu.gpu_enabled():
         algorithm.to()
 
     # debugging triggers a lot of printing and logs to a debug directory
-    DEBUG = variant['util_params']['debug']
-    os.environ['DEBUG'] = str(int(DEBUG))
+    DEBUG = variant["util_params"]["debug"]
+    os.environ["DEBUG"] = str(int(DEBUG))
 
     # create logging directory
     # TODO support Docker
-    exp_id = 'debug' if DEBUG else None
-    base_log_dir = variant['util_params']['base_log_dir']
-    experiment_log_dir = setup_logger(variant['env_name'], variant=variant, exp_id=exp_id, base_log_dir=base_log_dir)
+    exp_id = "debug" if DEBUG else None
+    base_log_dir = variant["util_params"]["base_log_dir"]
+    experiment_log_dir = setup_logger(
+        variant["env_name"], variant=variant, exp_id=exp_id, base_log_dir=base_log_dir
+    )
     print(f"Logging to {base_log_dir}")
-    with open(os.path.join(base_log_dir, 'test.txt'), 'w') as f: 
-        f.write('success')
-
+    with open(os.path.join(base_log_dir, "test.txt"), "w") as f:
+        f.write("success")
 
     # optionally save eval trajectories as pkl files
-    if variant['algo_params']['dump_eval_paths']:
-        pickle_dir = experiment_log_dir + '/eval_trajectories'
+    if variant["algo_params"]["dump_eval_paths"]:
+        pickle_dir = experiment_log_dir + "/eval_trajectories"
         pathlib.Path(pickle_dir).mkdir(parents=True, exist_ok=True)
 
     # run the algorithm
     algorithm.train()
 
+
 def deep_update_dict(fr, to):
-    ''' update dict of dicts with new values '''
+    """ update dict of dicts with new values """
     # assume dicts have same keys
     for k, v in fr.items():
         if type(v) is dict:
@@ -127,11 +138,12 @@ def deep_update_dict(fr, to):
             to[k] = v
     return to
 
+
 @click.command()
-@click.argument('config', default=None)
-@click.option('--gpu', default=0)
-@click.option('--l2b', default=0)
-@click.option('--log-dir', default=None)
+@click.argument("config", default=None)
+@click.option("--gpu", default=0)
+@click.option("--l2b", default=0)
+@click.option("--log-dir", default=None)
 def main(config, gpu, l2b, log_dir):
 
     variant = l2b_config if l2b else default_config
@@ -139,12 +151,12 @@ def main(config, gpu, l2b, log_dir):
         with open(os.path.join(config)) as f:
             exp_params = json.load(f)
         variant = deep_update_dict(exp_params, variant)
-    variant['util_params']['gpu_id'] = gpu
+    variant["util_params"]["gpu_id"] = gpu
     if log_dir is not None:
-        variant['util_params']['base_log_dir'] = log_dir
+        variant["util_params"]["base_log_dir"] = log_dir
 
     experiment(variant)
 
+
 if __name__ == "__main__":
     main()
-

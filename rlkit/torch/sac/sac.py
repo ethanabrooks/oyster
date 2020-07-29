@@ -12,31 +12,29 @@ from rlkit.core.rl_algorithm import MetaRLAlgorithm
 
 class PEARLSoftActorCritic(MetaRLAlgorithm):
     def __init__(
-            self,
-            env,
-            train_tasks,
-            eval_tasks,
-            latent_dim,
-            nets,
-
-            policy_lr=1e-3,
-            qf_lr=1e-3,
-            vf_lr=1e-3,
-            context_lr=1e-3,
-            kl_lambda=1.,
-            policy_mean_reg_weight=1e-3,
-            policy_std_reg_weight=1e-3,
-            policy_pre_activation_weight=0.,
-            optimizer_class=optim.Adam,
-            recurrent=False,
-            use_information_bottleneck=True,
-            use_next_obs_in_context=False,
-            sparse_rewards=False,
-
-            soft_target_tau=1e-2,
-            plotter=None,
-            render_eval_paths=False,
-            **kwargs
+        self,
+        env,
+        train_tasks,
+        eval_tasks,
+        latent_dim,
+        nets,
+        policy_lr=1e-3,
+        qf_lr=1e-3,
+        vf_lr=1e-3,
+        context_lr=1e-3,
+        kl_lambda=1.0,
+        policy_mean_reg_weight=1e-3,
+        policy_std_reg_weight=1e-3,
+        policy_pre_activation_weight=0.0,
+        optimizer_class=optim.Adam,
+        recurrent=False,
+        use_information_bottleneck=True,
+        use_next_obs_in_context=False,
+        sparse_rewards=False,
+        soft_target_tau=1e-2,
+        plotter=None,
+        render_eval_paths=False,
+        **kwargs
     ):
         super().__init__(
             env=env,
@@ -69,30 +67,23 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         self.target_vf = self.vf.copy()
 
         self.policy_optimizer = optimizer_class(
-            self.agent.policy.parameters(),
-            lr=policy_lr,
+            self.agent.policy.parameters(), lr=policy_lr,
         )
-        self.qf1_optimizer = optimizer_class(
-            self.qf1.parameters(),
-            lr=qf_lr,
-        )
-        self.qf2_optimizer = optimizer_class(
-            self.qf2.parameters(),
-            lr=qf_lr,
-        )
-        self.vf_optimizer = optimizer_class(
-            self.vf.parameters(),
-            lr=vf_lr,
-        )
+        self.qf1_optimizer = optimizer_class(self.qf1.parameters(), lr=qf_lr,)
+        self.qf2_optimizer = optimizer_class(self.qf2.parameters(), lr=qf_lr,)
+        self.vf_optimizer = optimizer_class(self.vf.parameters(), lr=vf_lr,)
         self.context_optimizer = optimizer_class(
-            self.agent.context_encoder.parameters(),
-            lr=context_lr,
+            self.agent.context_encoder.parameters(), lr=context_lr,
         )
 
     ###### Torch stuff #####
     @property
     def networks(self):
-        return self.agent.networks + [self.agent] + [self.qf1, self.qf2, self.vf, self.target_vf]
+        return (
+            self.agent.networks
+            + [self.agent]
+            + [self.qf1, self.qf2, self.vf, self.target_vf]
+        )
 
     def training_mode(self, mode):
         for net in self.networks:
@@ -106,22 +97,27 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
 
     ##### Data handling #####
     def unpack_batch(self, batch, sparse_reward=False):
-        ''' unpack a batch and return individual elements '''
-        o = batch['observations'][None, ...]
-        a = batch['actions'][None, ...]
+        """ unpack a batch and return individual elements """
+        o = batch["observations"][None, ...]
+        a = batch["actions"][None, ...]
         if sparse_reward:
-            r = batch['sparse_rewards'][None, ...]
+            r = batch["sparse_rewards"][None, ...]
         else:
-            r = batch['rewards'][None, ...]
-        no = batch['next_observations'][None, ...]
-        t = batch['terminals'][None, ...]
+            r = batch["rewards"][None, ...]
+        no = batch["next_observations"][None, ...]
+        t = batch["terminals"][None, ...]
         return [o, a, r, no, t]
 
     def sample_sac(self, indices):
-        ''' sample batch of training data from a list of tasks for training the actor-critic '''
+        """ sample batch of training data from a list of tasks for training the actor-critic """
         # this batch consists of transitions sampled randomly from replay buffer
         # rewards are always dense
-        batches = [ptu.np_to_pytorch_batch(self.replay_buffer.random_batch(idx, batch_size=self.batch_size)) for idx in indices]
+        batches = [
+            ptu.np_to_pytorch_batch(
+                self.replay_buffer.random_batch(idx, batch_size=self.batch_size)
+            )
+            for idx in indices
+        ]
         unpacked = [self.unpack_batch(batch) for batch in batches]
         # group like elements together
         unpacked = [[x[i] for x in unpacked] for i in range(len(unpacked[0]))]
@@ -129,12 +125,22 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         return unpacked
 
     def sample_context(self, indices):
-        ''' sample batch of context from a list of tasks from the replay buffer '''
+        """ sample batch of context from a list of tasks from the replay buffer """
         # make method work given a single task index
-        if not hasattr(indices, '__iter__'):
+        if not hasattr(indices, "__iter__"):
             indices = [indices]
-        batches = [ptu.np_to_pytorch_batch(self.enc_replay_buffer.random_batch(idx, batch_size=self.embedding_batch_size, sequence=self.recurrent)) for idx in indices]
-        context = [self.unpack_batch(batch, sparse_reward=self.sparse_rewards) for batch in batches]
+        batches = [
+            ptu.np_to_pytorch_batch(
+                self.enc_replay_buffer.random_batch(
+                    idx, batch_size=self.embedding_batch_size, sequence=self.recurrent
+                )
+            )
+            for idx in indices
+        ]
+        context = [
+            self.unpack_batch(batch, sparse_reward=self.sparse_rewards)
+            for batch in batches
+        ]
         # group like elements together
         context = [[x[i] for x in context] for i in range(len(context[0]))]
         context = [torch.cat(x, dim=0) for x in context]
@@ -160,7 +166,7 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
 
         # do this in a loop so we can truncate backprop in the recurrent encoder
         for i in range(num_updates):
-            context = context_batch[:, i * mb_size: i * mb_size + mb_size, :]
+            context = context_batch[:, i * mb_size : i * mb_size + mb_size, :]
             self._take_step(indices, context)
 
             # stop backprop
@@ -215,8 +221,10 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         # scale rewards for Bellman update
         rewards_flat = rewards_flat * self.reward_scale
         terms_flat = terms.view(self.batch_size * num_tasks, -1)
-        q_target = rewards_flat + (1. - terms_flat) * self.discount * target_v_values
-        qf_loss = torch.mean((q1_pred - q_target) ** 2) + torch.mean((q2_pred - q_target) ** 2)
+        q_target = rewards_flat + (1.0 - terms_flat) * self.discount * target_v_values
+        qf_loss = torch.mean((q1_pred - q_target) ** 2) + torch.mean(
+            (q2_pred - q_target) ** 2
+        )
         qf_loss.backward()
         self.qf1_optimizer.step()
         self.qf2_optimizer.step()
@@ -237,15 +245,13 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
         # n.b. policy update includes dQ/da
         log_policy_target = min_q_new_actions
 
-        policy_loss = (
-                log_pi - log_policy_target
-        ).mean()
+        policy_loss = (log_pi - log_policy_target).mean()
 
-        mean_reg_loss = self.policy_mean_reg_weight * (policy_mean**2).mean()
-        std_reg_loss = self.policy_std_reg_weight * (policy_log_std**2).mean()
+        mean_reg_loss = self.policy_mean_reg_weight * (policy_mean ** 2).mean()
+        std_reg_loss = self.policy_std_reg_weight * (policy_log_std ** 2).mean()
         pre_tanh_value = policy_outputs[-1]
         pre_activation_reg_loss = self.policy_pre_activation_weight * (
-            (pre_tanh_value**2).sum(dim=1).mean()
+            (pre_tanh_value ** 2).sum(dim=1).mean()
         )
         policy_reg_loss = mean_reg_loss + std_reg_loss + pre_activation_reg_loss
         policy_loss = policy_loss + policy_reg_loss
@@ -262,36 +268,31 @@ class PEARLSoftActorCritic(MetaRLAlgorithm):
             if self.use_information_bottleneck:
                 z_mean = np.mean(np.abs(ptu.get_numpy(self.agent.z_means[0])))
                 z_sig = np.mean(ptu.get_numpy(self.agent.z_vars[0]))
-                self.eval_statistics['Z mean train'] = z_mean
-                self.eval_statistics['Z variance train'] = z_sig
-                self.eval_statistics['KL Divergence'] = ptu.get_numpy(kl_div)
-                self.eval_statistics['KL Loss'] = ptu.get_numpy(kl_loss)
+                self.eval_statistics["Z mean train"] = z_mean
+                self.eval_statistics["Z variance train"] = z_sig
+                self.eval_statistics["KL Divergence"] = ptu.get_numpy(kl_div)
+                self.eval_statistics["KL Loss"] = ptu.get_numpy(kl_loss)
 
-            self.eval_statistics['QF Loss'] = np.mean(ptu.get_numpy(qf_loss))
-            self.eval_statistics['VF Loss'] = np.mean(ptu.get_numpy(vf_loss))
-            self.eval_statistics['Policy Loss'] = np.mean(ptu.get_numpy(
-                policy_loss
-            ))
-            self.eval_statistics.update(create_stats_ordered_dict(
-                'Q Predictions',
-                ptu.get_numpy(q1_pred),
-            ))
-            self.eval_statistics.update(create_stats_ordered_dict(
-                'V Predictions',
-                ptu.get_numpy(v_pred),
-            ))
-            self.eval_statistics.update(create_stats_ordered_dict(
-                'Log Pis',
-                ptu.get_numpy(log_pi),
-            ))
-            self.eval_statistics.update(create_stats_ordered_dict(
-                'Policy mu',
-                ptu.get_numpy(policy_mean),
-            ))
-            self.eval_statistics.update(create_stats_ordered_dict(
-                'Policy log std',
-                ptu.get_numpy(policy_log_std),
-            ))
+            self.eval_statistics["QF Loss"] = np.mean(ptu.get_numpy(qf_loss))
+            self.eval_statistics["VF Loss"] = np.mean(ptu.get_numpy(vf_loss))
+            self.eval_statistics["Policy Loss"] = np.mean(ptu.get_numpy(policy_loss))
+            self.eval_statistics.update(
+                create_stats_ordered_dict("Q Predictions", ptu.get_numpy(q1_pred),)
+            )
+            self.eval_statistics.update(
+                create_stats_ordered_dict("V Predictions", ptu.get_numpy(v_pred),)
+            )
+            self.eval_statistics.update(
+                create_stats_ordered_dict("Log Pis", ptu.get_numpy(log_pi),)
+            )
+            self.eval_statistics.update(
+                create_stats_ordered_dict("Policy mu", ptu.get_numpy(policy_mean),)
+            )
+            self.eval_statistics.update(
+                create_stats_ordered_dict(
+                    "Policy log std", ptu.get_numpy(policy_log_std),
+                )
+            )
 
     def get_epoch_snapshot(self, epoch):
         # NOTE: overriding parent method which also optionally saves the env

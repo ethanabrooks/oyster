@@ -17,8 +17,10 @@ from rlkit.torch.sac.policies import MakeDeterministic
 from rlkit.samplers.util import rollout
 
 
-def sim_policy(variant, path_to_exp, num_trajs=1, deterministic=False, save_video=False):
-    '''
+def sim_policy(
+    variant, path_to_exp, num_trajs=1, deterministic=False, save_video=False
+):
+    """
     simulate a trained policy adapting to a new task
     optionally save videos of the trajectories - requires ffmpeg
 
@@ -27,22 +29,33 @@ def sim_policy(variant, path_to_exp, num_trajs=1, deterministic=False, save_vide
     :num_trajs: number of trajectories to simulate per task (default 1)
     :deterministic: if the policy is deterministic (default stochastic)
     :save_video: whether to generate and save a video (default False)
-    '''
+    """
 
     # create multi-task environment and sample tasks
-    env = CameraWrapper(NormalizedBoxEnv(ENVS[variant['env_name']](**variant['env_params'])), variant['util_params']['gpu_id'])
+    env = CameraWrapper(
+        NormalizedBoxEnv(ENVS[variant["env_name"]](**variant["env_params"])),
+        variant["util_params"]["gpu_id"],
+    )
     tasks = env.get_all_task_idx()
     obs_dim = int(np.prod(env.observation_space.shape))
     action_dim = int(np.prod(env.action_space.shape))
-    eval_tasks=list(tasks[-variant['n_eval_tasks']:])
-    print('testing on {} test tasks, {} trajectories each'.format(len(eval_tasks), num_trajs))
+    eval_tasks = list(tasks[-variant["n_eval_tasks"] :])
+    print(
+        "testing on {} test tasks, {} trajectories each".format(
+            len(eval_tasks), num_trajs
+        )
+    )
 
     # instantiate networks
-    latent_dim = variant['latent_size']
-    context_encoder = latent_dim * 2 if variant['algo_params']['use_information_bottleneck'] else latent_dim
+    latent_dim = variant["latent_size"]
+    context_encoder = (
+        latent_dim * 2
+        if variant["algo_params"]["use_information_bottleneck"]
+        else latent_dim
+    )
     reward_dim = 1
-    net_size = variant['net_size']
-    recurrent = variant['algo_params']['recurrent']
+    net_size = variant["net_size"]
+    recurrent = variant["algo_params"]["recurrent"]
     encoder_model = RecurrentEncoder if recurrent else MlpEncoder
 
     context_encoder = encoder_model(
@@ -56,19 +69,16 @@ def sim_policy(variant, path_to_exp, num_trajs=1, deterministic=False, save_vide
         latent_dim=latent_dim,
         action_dim=action_dim,
     )
-    agent = PEARLAgent(
-        latent_dim,
-        context_encoder,
-        policy,
-        **variant['algo_params']
-    )
+    agent = PEARLAgent(latent_dim, context_encoder, policy, **variant["algo_params"])
     # deterministic eval
     if deterministic:
         agent = MakeDeterministic(agent)
 
     # load trained weights (otherwise simulate random policy)
-    context_encoder.load_state_dict(torch.load(os.path.join(path_to_exp, 'context_encoder.pth')))
-    policy.load_state_dict(torch.load(os.path.join(path_to_exp, 'policy.pth')))
+    context_encoder.load_state_dict(
+        torch.load(os.path.join(path_to_exp, "context_encoder.pth"))
+    )
+    policy.load_state_dict(torch.load(os.path.join(path_to_exp, "policy.pth")))
 
     # loop through tasks collecting rollouts
     all_rets = []
@@ -78,24 +88,32 @@ def sim_policy(variant, path_to_exp, num_trajs=1, deterministic=False, save_vide
         agent.clear_z()
         paths = []
         for n in range(num_trajs):
-            path = rollout(env, agent, max_path_length=variant['algo_params']['max_path_length'], accum_context=True, save_frames=save_video)
+            path = rollout(
+                env,
+                agent,
+                max_path_length=variant["algo_params"]["max_path_length"],
+                accum_context=True,
+                save_frames=save_video,
+            )
             paths.append(path)
             if save_video:
-                video_frames += [t['frame'] for t in path['env_infos']]
-            if n >= variant['algo_params']['num_exp_traj_eval']:
+                video_frames += [t["frame"] for t in path["env_infos"]]
+            if n >= variant["algo_params"]["num_exp_traj_eval"]:
                 agent.infer_posterior(agent.context)
-        all_rets.append([sum(p['rewards']) for p in paths])
+        all_rets.append([sum(p["rewards"]) for p in paths])
 
     if save_video:
         # save frames to file temporarily
-        temp_dir = os.path.join(path_to_exp, 'temp')
+        temp_dir = os.path.join(path_to_exp, "temp")
         os.makedirs(temp_dir, exist_ok=True)
         for i, frm in enumerate(video_frames):
-            frm.save(os.path.join(temp_dir, '%06d.jpg' % i))
+            frm.save(os.path.join(temp_dir, "%06d.jpg" % i))
 
-        video_filename=os.path.join(path_to_exp, 'video.mp4'.format(idx))
+        video_filename = os.path.join(path_to_exp, "video.mp4".format(idx))
         # run ffmpeg to make the video
-        os.system('ffmpeg -i {}/%06d.jpg -vcodec mpeg4 {}'.format(temp_dir, video_filename))
+        os.system(
+            "ffmpeg -i {}/%06d.jpg -vcodec mpeg4 {}".format(temp_dir, video_filename)
+        )
         # delete the frames
         shutil.rmtree(temp_dir)
 
@@ -104,15 +122,15 @@ def sim_policy(variant, path_to_exp, num_trajs=1, deterministic=False, save_vide
     rets = [a[:n] for a in all_rets]
     rets = np.mean(np.stack(rets), axis=0)
     for i, ret in enumerate(rets):
-        print('trajectory {}, avg return: {} \n'.format(i, ret))
+        print("trajectory {}, avg return: {} \n".format(i, ret))
 
 
 @click.command()
-@click.argument('config', default=None)
-@click.argument('path', default=None)
-@click.option('--num_trajs', default=3)
-@click.option('--deterministic', is_flag=True, default=False)
-@click.option('--video', is_flag=True, default=False)
+@click.argument("config", default=None)
+@click.argument("path", default=None)
+@click.option("--num_trajs", default=3)
+@click.option("--deterministic", is_flag=True, default=False)
+@click.option("--video", is_flag=True, default=False)
 def main(config, path, num_trajs, deterministic, video):
     variant = default_config
     if config:
